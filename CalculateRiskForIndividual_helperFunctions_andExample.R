@@ -6,7 +6,7 @@ library(tools)
 ## (simple method would just require reading in one file containing all data, without missing information)
 getCurrentAge <- function (DOB, currentYear) {
   DOB$dob <- lapply(DOB$dob, function(x) as.numeric(x <- substring(x,0,4))) # assumes date in YYYY-MM-DD format
-  DOB$dob <- lapply(DOB$dob, function(x) 2015 - x)
+  DOB$dob <- lapply(DOB$dob, function(x) currentYear - x)
   DOB$dob <- unlist(DOB$dob)
   colnames(DOB) <- c('id','age')
   return (DOB)
