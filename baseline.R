@@ -1,109 +1,10 @@
-### FUNCTIONS
-## Calculate risk
-# Get probability. The main function to run
-GetProbability <- function(age,laterAge,ageMen,nBiops,ageFLB,numRel,raceIndex) { 
-  riskGroupInfo <- rep(0,length(beta))
-  riskGroupInfo[1] <- 1
-  riskGroupInfo[2] <- getAgeCategory(age)
-  riskGroupInfo[3] <- getAgeMenCategory(ageMen)
-  riskGroupInfo[4] <- getNBiopsCategory(nBiops)
-  riskGroupInfo[5] <- getAgeFLBCategory(ageFLB)
-  riskGroupInfo[6] <- getNumRelCategory(numRel)
-  riskGroupInfo[7] <- riskGroupInfo[4]*riskGroupInfo[2]
-  riskGroupInfo[8] <- riskGroupInfo[5]*riskGroupInfo[6]
-  
-  jStart <- findInterval(age,ageIntervals,rightmost.closed=TRUE)
-  jEnd <- findInterval(laterAge,ageIntervals,rightmost.closed=TRUE)
-  
-  RR <- CalculateRelativeRisk(riskGroupInfo,raceIndex)
-  P <- CalculateAbsoluteRisk(jStart,jEnd,RR)
-  
-  return(P)
-}
-# Relative risk
-CalculateRelativeRisk <- function(riskGroupInfo,raceIdx) {
-  beta <- beta_[raceIdx,]
-  betaTotal <- sum(riskGroupInfo*beta)
-  relativeRisk <- exp(betaTotal)
-}
-# Absolute risk
-CalculateAbsoluteRisk <- function(jStart,jEnd,relativeRisk,raceIdx){
-  h2 <- h2_[raceIdx,] # competing hazards
-  h1_star <- h1_star_[raceIdx,] # breast cancer hazard
-  PAF <- PAF_[raceIdx,] # population attributable factor
-  
-  h1 <- rep(1,14) # baseline hazard, calculated
-  for (i in 1:7)  h1[i] <- h1_star[i]*PAF_[1]
-  for (i in 8:14) h1[i] <- h1_star[i]*PAF_[2]
-  
-  prob <- 0;
-  
-  # calculate all the needed s1, s2 values, which has 1.0 in position 1, and the rest represent age intervals
-  s1T <- rep(1,jEnd+1) # survival of competing hazards
-  s2T <- rep(1,jEnd+1) # survival of breast cancer hazard
-  for (i in 2:(jEnd+1)){
-    s1T[i] <- s1T[i-1]*exp(-(h1[i-1]*relativeRisk*5))
-    s2T[i] <- s2T[i-1]*exp(-(h2[i-1]*5))
-  }
-  for (j in jStart:jEnd) { #s1 and s2 at index j is one age interval behind h1 and h2
-    prob <- prob + ((h1[j]*relativeRisk)/(h1[j]*relativeRisk+h2[j]))*(s1T[j]/s1T[jStart])*(s2T[j]/s2T[jStart])*(1.0 - exp(-5*(h1[j]*relativeRisk+h2[j])) )
-  }
-  
-  return(prob*100)
-}
-
-## Categorize risk factors
-# Age category
-getAgeCategory <- function(age) {
-  if (age>=50) return(1)
-  return(0) # <50
-}
-# Age of menarche
-getAgeMenCategory <- function(age) {
-  if (age<12) return(2)
-  else if (age<=13) return(1)
-  return(0) # >=14
-}
-# Age at first live birth
-getAgeFLBCategory <- function(age) {
-  if (age>=30) return(3)
-  else if (age>=25 || age==0) return(2) # age==0 for nulliparous
-  else if (age>=20) return(1)
-  return(0) # <20
-}
-# Number of biopsies
-getNBiopsCategory <- function(num) {
-  return(getNumBiopsRelCategory(num))
-}
-# Number of 1st degree relatives with breast cancer
-getNumRelCategory <- function(num) {
-  return(getNumBiopsRelCategory(num))
-}
-# Number of biopsies and number of 1st degree relatives with breast cancer
-getNumBiopsRelCategory <- function(num) {
-  if (num>=2) return(2)
-  else if (num==1) return(1)
-  return(0) # 0
-}
-getRaceIndex <- function(race) {
-  race <- toLower(c(race))
-  if (race=="white") return(1)
-  else if (race=="black") return (2)
-  else if (race=="hispanic") return(3)
-  else if (race=="chinese") return(7)
-  else if (race=="japanese") return (8)
-  else if (race=="filipino") return (9)
-  else if (race=="hawaiian") return (10)
-  else if (race=="pacific islander") return (11)
-  else if (race=="other asian") return (12)
-  else return(1) # default just in case
-}
-
 ### STATIC VARIABLES
 
-# Competing hazards - non-breast cancer hazards (h2)
+
 # 1         2           3         4          5           6         7               8               9               10               11              12
 # White     Black       Hispanic  WhiteAvg   BlackAvg    HispAvg   Chinese         Japanese        Filipino        Hawaiian        Other Pac Isl   Other Asian
+
+# Competing hazards - non-breast cancer hazards (h2)
 h2_ <- matrix(c(
   0.000493, 0.00074354, 0.000437, 0.0004412, 0.00074354, 0.000437, 0.000210649076, 0.000173593803, 0.000229120979, 0.000563507269, 0.000465500812, 0.000212632332, # 0. [20:25)
   0.000531, 0.00101698, 0.000533, 0.0005254, 0.00101698, 0.000533, 0.000192644865, 0.000295805882, 0.000262988494, 0.000369640217, 0.000600466920, 0.000242170741, # 1. [25:30)
@@ -122,8 +23,6 @@ h2_ <- matrix(c(
 ), nrow = 12, ncol = 14)
 
 # Breast cancer composite incidence rates (h1*)
-# 1         2           3         4          5           6         7               8               9               10               11              12
-# White     Black       Hispanic  WhiteAvg   BlackAvg    HispAvg   Chinese         Japanese        Filipino        Hawaiian        Other Pac Isl   Other Asian
 h1_star_ <- matrix(c(
   0.000010, 0.00002696, 0.000020, 0.0000122, 0.00002696, 0.000020, 0.000004059636, 0.000000000001, 0.000007500161, 0.000045080582, 0.000000000001, 0.000012355409, # 0. [20:25)
   0.000076, 0.00011295, 0.000071, 0.0000741, 0.00011295, 0.000071, 0.000045944465, 0.000099483924, 0.000081073945, 0.000098570724, 0.000071525212, 0.000059526456, # 1. [25:30)
@@ -141,41 +40,129 @@ h1_star_ <- matrix(c(
   0.004109, 0.00363712, 0.002039, 0.0040106, 0.00363712, 0.002039, 0.002247315779, 0.002051572909, 0.001750879130, 0.002949061662, 0.001012248203, 0.000661576644  # 13. [85:90)
 ), nrow = 12, ncol = 14)
 
+
 # Logistic regression coefficients (beta)
-#  1              2              3              4              5              6
-#  White          Black          Hispanic       WhiteAvg       BlackAvg       HispAvg
 beta_ <- matrix(c(
   -0.7494824600, -0.3457169653, -0.7494824600, -0.7494824600, -0.3457169653, -0.7494824600, # Intercept
   0.0108080720,  0.0334703319,  0.0108080720,  0.0108080720,  0.0334703319,  0.0108080720, # Age >= 50 indicator
-  0.0940103059,  0.2672530336,  0.0940103059,  0.0940103059,  0.2672530336,  0.0940103059, # Age menarchy
+  0.0940103059,  0.2672530336,  0.0940103059,  0.0940103059,  0.2672530336,  0.0940103059, # Age menarche
   0.5292641686,  0.1822121131,  0.5292641686,  0.5292641686,  0.1822121131,  0.5292641686, # Num of breast biopsies
   0.2186262218,  0.0000000000,  0.2186262218,  0.2186262218,  0.0000000000,  0.2186262218, # Age 1st live birth
   0.9583027845,  0.4757242578,  0.9583027845,  0.9583027845,  0.4757242578,  0.9583027845, # 1st degree relatives
   -0.2880424830, -0.1119411682, -0.2880424830, -0.2880424830, -0.1119411682, -0.2880424830, # Breast biopsies * age >= 50
   -0.1908113865,  0.0000000000, -0.1908113865, -0.1908113865,  0.0000000000, -0.1908113865  # Age 1st live birth * 1st degree relatives
 ), nrow = 6, ncol = 8)
-# Asians have the same coefficients
 for (i in 7:12) {
   beta_ <- rbind(beta_,c(0,0,0.07499257592975,0.55263612260619,0.27638268294593,0.79185633720481,0,0))
-}
+} # Asians have the same coefficients
 
 # Population Attributable Factor (PAF)
-# 1          2           3          4  5  6
-# White      Black       Hispanic   WA BA HA
 PAF_ <- matrix(c(
   0.5788413, 0.72949880, 0.5788413, 1, 1, 1, # Age < 50
   0.5788413, 0.74397137, 0.5788413, 1, 1, 1  # Age >=50
 ), nrow = 6, ncol = 2)
-# Asians have the same PAF
 for (i in 7:12) {
   PAF_ <- rbind(PAF_,c(0.47519806426735,0.50316401683903))
-}
+} # Asians have the same PAF
 PAF_ <- rbind(PAF_,c(1,1)) # Presumably Asian Average
 
 ageIntervals <- seq(20,90,by=5)
 
-# Calculate h1, the baseline hazard from a subject without known risk factors
+### FUNCTIONS
 
+# Get probability. The main function to run
+GetProbability <- function(age,laterAge,ageMen,nBiops,ageFLB,numRel,race) { 
+  riskGroupInfo <- rep(0,length(beta))
+  riskGroupInfo[1] <- 1
+  riskGroupInfo[2] <- getAgeCategory(age)
+  riskGroupInfo[3] <- getAgeMenCategory(ageMen)
+  riskGroupInfo[4] <- getNBiopsCategory(nBiops)
+  riskGroupInfo[5] <- getAgeFLBCategory(ageFLB)
+  riskGroupInfo[6] <- getNumRelCategory(numRel)
+  riskGroupInfo[7] <- riskGroupInfo[4]*riskGroupInfo[2]
+  riskGroupInfo[8] <- riskGroupInfo[5]*riskGroupInfo[6]
+  raceIndex <- getRaceIndex(race)
+  
+  jStart <- findInterval(age,ageIntervals,rightmost.closed=TRUE)
+  jEnd <- findInterval(laterAge,ageIntervals,rightmost.closed=TRUE)
+  
+  RR <- CalculateRelativeRisk(riskGroupInfo,raceIndex)
+  P <- CalculateAbsoluteRisk(jStart,jEnd,RR,raceIndex)
+  
+  return(P)
+}
+
+CalculateRelativeRisk <- function(riskGroupInfo,raceIndex) {
+  beta <- beta_[raceIndex,]
+  betaTotal <- sum(riskGroupInfo*beta)
+  relativeRisk <- exp(betaTotal)
+}
+
+CalculateAbsoluteRisk <- function(jStart,jEnd,relativeRisk,raceIndex){
+  h2 <- h2_[raceIndex,] # competing hazards
+  h1_star <- h1_star_[raceIndex,] # breast cancer hazard
+  PAF <- PAF_[raceIndex,] # population attributable factor
+  
+  h1 <- rep(1,14) # baseline hazard, calculated
+  for (i in 1:7)  h1[i] <- h1_star[i]*PAF[1]
+  for (i in 8:14) h1[i] <- h1_star[i]*PAF[2]
+  
+  prob <- 0;
+  
+  # calculate all the needed s1, s2 values, which has 1.0 in position 1, and the rest represent age intervals
+  s1T <- rep(1,jEnd+1) # survival of competing hazards
+  s2T <- rep(1,jEnd+1) # survival of breast cancer hazard
+  for (i in 2:(jEnd+1)){
+    s1T[i] <- s1T[i-1]*exp(-(h1[i-1]*relativeRisk*5))
+    s2T[i] <- s2T[i-1]*exp(-(h2[i-1]*5))
+  }
+  for (j in jStart:jEnd) { #s1 and s2 at index j is one age interval behind h1 and h2
+    prob = prob + ((h1[j]*relativeRisk)/(h1[j]*relativeRisk+h2[j]))*(s1T[j]/s1T[jStart])*(s2T[j]/s2T[jStart])*(1.0 - exp(-5*(h1[j]*relativeRisk+h2[j])) )
+  }
+  
+  return(prob*100)
+}
+
+## Categorize risk factors
+getAgeCategory <- function(age) {
+  if (age>=50) return(1)
+  return(0) # <50
+} # Age category
+getAgeMenCategory <- function(age) {
+  if (age<12) return(2)
+  else if (age<=13) return(1)
+  return(0) # >=14
+} # Age of menarche
+getAgeFLBCategory <- function(age) {
+  if (age>=30) return(3)
+  else if (age>=25 || age==0) return(2) # age==0 for nulliparous
+  else if (age>=20) return(1)
+  return(0) # <20
+} # Age at first live birth
+getNBiopsCategory <- function(num) {
+  return(getNumBiopsRelCategory(num))
+} # Number of biopsies
+getNumRelCategory <- function(num) {
+  return(getNumBiopsRelCategory(num))
+} # Number of 1st degree relatives with breast cancer
+getNumBiopsRelCategory <- function(num) {
+  if (num>=2) return(2)
+  else if (num==1) return(1)
+  return(0) # 0
+} # Number of biopsies and number of 1st degree relatives with breast cancer
+getRaceIndex <- function(race) {
+  race <- tolower(c(race))
+  if (race=="white") return(1)
+  else if (race=="black") return (2)
+  else if (race=="hispanic") return(3)
+  else if (race=="chinese") return(7)
+  else if (race=="japanese") return (8)
+  else if (race=="filipino") return (9)
+  else if (race=="hawaiian") return (10)
+  else if (race=="pacific islander") return (11)
+  else if (race=="other asian") return (12)
+  else return(1) # default just in case
+}
 
 ### TESTING
 age <- 35
@@ -184,5 +171,5 @@ ageMen <- 14
 nBiops <- 0
 ageFLB <- 19
 numRel <- 0
-raceIdx <- 1
-P <- GetProbability(age,laterAge,ageMen,nBiops,ageFLB,numRel,raceIdx)
+race <- "white"
+P <- GetProbability(age,laterAge,ageMen,nBiops,ageFLB,numRel,race)
