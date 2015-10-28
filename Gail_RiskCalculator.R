@@ -165,11 +165,11 @@ getRaceIndex <- function(race) {
 }
 
 ### TESTING
-age <- 35
-laterAge <- age+5
-ageMen <- 14
-nBiops <- 0
-ageFLB <- 19
-numRel <- 0
-race <- "white"
-P <- GetProbability(age,laterAge,ageMen,nBiops,ageFLB,numRel,race)
+# age <- 35
+# laterAge <- age+5
+# ageMen <- 14
+# nBiops <- 0
+# ageFLB <- 19
+# numRel <- 0
+# race <- "white"
+# P <- GetProbability(age,laterAge,ageMen,nBiops,ageFLB,numRel,race)
