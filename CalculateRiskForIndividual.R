@@ -1,56 +1,57 @@
-args <- commandArgs(trailingOnly=TRUE);
-
-riskFactorsLocation = args[1]
-breastDensityLocation = args[2]
-baselineCodeLocation = args[3]
-outputDir = args[4]
-
-source(baselineCodeLocation)
+source(GailRiskCalculator) # if R script is in another location, replace with path to script
 library(tools)
 
-#### GET DATA FROM FILES
-gailData <-read.table(file_path_as_absolute(riskFactorsLocation), header=TRUE,sep=",",stringsAsFactors=FALSE)
-densityData <- read.table(file_path_as_absolute(breastDensityLocation), header=TRUE,sep=",",stringsAsFactors=FALSE)
-colnames(gailData) <- c("id","visitType","visitDate.","currentAge","menarcheAge","firstLiveBirthAge","race",
-                        "numBiopsy","1stDegreeRelatives","BCever","5yearScore","5yearScoreAvg","10yearScore","
-                        10yearScoreAvg", "90yearScore","90yearScoreAvg")
-colnames(densityData) <- c("id","densityBirads","daysDiff","sampleAge","mammoAge",
-                           "visitDate","createDate","datediff.visitDate.createDate.")
+#### helper functions, optional
+## assuming we have different files for different data obtained in different years 
+## (simple method would just require reading in one file containing all data, without missing information)
+getCurrentAge <- function (DOB, currentYear) {
+  DOB$dob <- lapply(DOB$dob, function(x) as.numeric(x <- substring(x,0,4))) # assumes date in YYYY-MM-DD format
+  DOB$dob <- lapply(DOB$dob, function(x) 2015 - x)
+  DOB$dob <- unlist(DOB$dob)
+  colnames(DOB) <- c('id','age')
+  return (DOB)
+}
+getData <- function (currentAge,status,menarcheFile,biopsyFile,relativesFile,FLBfile,densityFile,raceFile,statusFile) {
+  menarcheAge <-    read.table(menarcheFile, header=TRUE,sep=",",stringsAsFactors=FALSE)
+  numBiopsy <-      read.table(biopsyFile, header=TRUE,sep=",",stringsAsFactors=FALSE)
+  numRelative <-    read.table(relativesFile, header=TRUE,sep=",",stringsAsFactors=FALSE)
+  firstLiveBirth <- read.table(FLBfile, header=TRUE,sep=",",stringsAsFactors=FALSE)
+  breastDensity <-  read.table(densityFile, header=TRUE,sep=",",stringsAsFactors=FALSE)
+  race <-           read.table(raceFile, header=T, sep=",", stringsAsFactors=F)
+  status <-         read.table(statusFile, header=FALSE,sep="\t",stringsAsFactors=FALSE) ## status file is tsv and without header
+                               
+  colnames(firstLiveBirth) <- c('id','FBLage')
+  colnames(menarcheAge) <-    c('id','menarcheAge')
+  colnames(numBiopsy) <-      c('id','numBiopsy')
+  colnames(numRelative) <-    c('id','numRelative')
+  colnames(race) <-           c('id','race')
+  colnames(status) <-         c('id','status')
+  
+  gailData <- merge(currentAge,firstLiveBirth,by="id") # combine patients with data across the different risk factor considerations
+  gailData <- merge(gailData,menarcheAge, by='id')
+  gailData <- merge(gailData,numBiopsy, by='id')
+  gailData <- merge(gailData,numRelative, by='id')
+  gailData <- merge(gailData,status, by='id')
+ 
+  return(gailDate)
+}
 
-completeDensityData <- densityData[densityData$densityBirads != "",]
 
+## dummy code to use functions: if data is all in one file
+## set file path
+dataFile <- ""
+## do risk calculations
+gailData <- read.table(dataFile, header=TRUE,sep=",",stringsAsFactors=FALSE)
+colnames(gailData) <- c("age","laterAge","menarcheAge","numBiopsy","FLBage","numRelative","status") # assumes data is in this format in dataFile
+absoluteRisk5year <- mapply(GetProbability, gailData$age,later5year,gailData$menarcheAge,gailData$numBiopsy,
+                            gailData$FBLage,gailData$numRelative)
 
-#### REMOVE OVERLAPS
-data <- merge(gailData,completeDensityData, by.x='id', by.y='id' )
+## plotting the data
+xline <- seq(1:nrow(absoluteRisk5year))
+plot(xline,absoluteRisk5year,xlab="women",ylab="Absolute Risk of Breast Cancer within 5 years",
+     type="l",lwd=.5,lty=1,col="blue",pch=0)
 
-# CONVERT DATA INTO CATEGORICAL DATA, AS DATA.FRAMES TO VISUALIZE DATA
-ageCat <- do.call(rbind.data.frame,lapply(data$currentAge, getAgeCategory))
-ageMen <- do.call(rbind.data.frame,lapply(data$menarcheAge, getAgeMenCategory))
-ageFLB <- do.call(rbind.data.frame,lapply(data$firstLiveBirthAge, getAgeFBLCaetgory))
-nBiops <- do.call(rbind.data.frame,lapply(data$numBiopsy, getNBiopsCategory))
-nRelat <- do.call(rbind.data.frame,lapply(data$1stDegreeRelatives getNumRelCategory))
-# TODO get  race <- do.call(rbind.data.frame,lapply(data$C_races, ))
-
-#### CONVERT INTO FACTORS
-ageCat[,1] <- factor(ageCat[,1])
-ageMen[,1] <- factor(ageMen[,1])
-ageFLB[,1] <- factor(ageFLB[,1])
-nBiops[,1] <- factor(nBiops[,1])
-nRelat[,1] <- factor(nRelat[,1])
-# TODO convert race
-breastCancerStatus <- factor(data$BCever)
-breastDensity <- factor(data$densityBirads)
-
-#### GET SOME DESCRIPTORS
-nBC <- length(which(breastCancerStatus=="0"))
-nNoBC <- length(which(breastCancerStatus=="1"))
-
-#### logit 
-logitData <- data.frame(breastCancerStatus,ageCat,ageMen,ageFLB,nBiops,nRelat,breastDensity)
-colnames(logitData) <- c("breastCancerStatus","ageCat","ageMen","ageFLB","nBiops","nRelat","breastDensity")
-
-nothing <- glm(breastCancerStatus ~ 1,family=binomial)
-densityLogit <- glm(breastCancerStatus ~ ageCat + ageMen + ageFLB + nBiops + nRelat + breastDensity, data=logitData,family="binomial")
-# forwards = step(nothing, scope=list(lower=formula(nothing),upper=formula(densityLogit)), direction="forward")
-
+## some descriptors
+nBC <- length(which(gailData$status=="0"))
+nNoBC <- length(which(gailData$status=="1"))
 
