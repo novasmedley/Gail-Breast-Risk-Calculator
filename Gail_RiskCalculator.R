@@ -152,15 +152,15 @@ getNumBiopsRelCategory <- function(num) {
 } # Number of biopsies and number of 1st degree relatives with breast cancer
 getRaceIndex <- function(race) {
   race <- tolower(c(race))
-  if (race=="white") return(1)
-  else if (race=="black") return (2)
-  else if (race=="hispanic") return(3)
-  else if (race=="chinese") return(7)
-  else if (race=="japanese") return (8)
-  else if (race=="filipino") return (9)
-  else if (race=="hawaiian") return (10)
-  else if (race=="pacific islander") return (11)
-  else if (race=="other asian") return (12)
+  if (grep(race,"white") > 0) return(1)
+  else if (grep(race,"black") > 0) return (2)
+  else if (grep(race,"hispanic") > 0) return(3)
+  else if (grep(race,"chinese") > 0) return(7)
+  else if (grep(race,"japanese") > 0) return (8)
+  else if (grep(race,"filipino") > 0) return (9)
+  else if (grep(race,"hawaiian") > 0) return (10)
+  else if (grep(race,"pacific islander") > 0) return (11)
+  else if (grep(race,"asian") > 0) return (12)
   else return(1) # default just in case
 }
 
