@@ -96,6 +96,8 @@ CalculateRelativeRisk <- function(riskGroupInfo,raceIndex) {
   beta <- beta_[raceIndex,]
   betaTotal <- sum(riskGroupInfo*beta)
   relativeRisk <- exp(betaTotal)
+  
+  return (relativeRisk)
 }
 
 CalculateAbsoluteRisk <- function(jStart,jEnd,relativeRisk,raceIndex){
@@ -152,15 +154,15 @@ getNumBiopsRelCategory <- function(num) {
 } # Number of biopsies and number of 1st degree relatives with breast cancer
 getRaceIndex <- function(race) {
   race <- tolower(c(race))
-  if (race=="white") return(1)
-  else if (race=="black") return (2)
-  else if (race=="hispanic") return(3)
-  else if (race=="chinese") return(7)
-  else if (race=="japanese") return (8)
-  else if (race=="filipino") return (9)
-  else if (race=="hawaiian") return (10)
-  else if (race=="pacific islander") return (11)
-  else if (race=="other asian") return (12)
+  if (grepl("white",race) > 0) return(1)
+  else if (grepl("black",race) > 0) return(2)
+  else if (grepl("hispanic",race) > 0) return(3)
+  else if (grepl("chinese",race) > 0) return(7)
+  else if (grepl("japanese",race) > 0) return (8)
+  else if (grepl("filipino",race) > 0) return (9)
+  else if (grepl("hawaiian",race) > 0) return (10)
+  else if (grepl("pacific",race) > 0 & grepl("islander",race) >0) return (11)
+  else if (grepl("asian",race) > 0) return (12)
   else return(1) # default just in case
 }
 
